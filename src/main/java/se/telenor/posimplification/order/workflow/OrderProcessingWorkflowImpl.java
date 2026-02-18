@@ -1,10 +1,10 @@
 package se.telenor.posimplification.order.workflow;
 
+import io.temporal.activity.ActivityOptions;
 import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.Workflow;
 import io.temporal.workflow.WorkflowQueue;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import se.telenor.posimplification.order.activities.CreateProductActivity;
 
 import java.time.Duration;
 import java.util.List;
@@ -27,6 +27,10 @@ public class OrderProcessingWorkflowImpl implements OrderProcessingWorkflow {
             switch (task.getType()) {
                 case CREATE_PRODUCT -> {
                     System.out.println("Creating product");
+                    var createProductActivity = Workflow.newActivityStub(CreateProductActivity.class,
+                            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofMinutes(1)).build());
+
+                    createProductActivity.createProduct(((CreateProductTask) task).getProductId());
                 }
                 case CREATE_RESOURCE -> {
                     System.out.println("Creating resource");
@@ -42,8 +46,8 @@ public class OrderProcessingWorkflowImpl implements OrderProcessingWorkflow {
     }
 
     static class State {
-        List<Task> taskList = List.of(new Task(Task.Type.CREATE_PRODUCT, Task.Status.PENDING),
-                new Task(Task.Type.CREATE_RESOURCE, Task.Status.PENDING));
+        List<Task> taskList = List.of(new CreateProductTask("product1"),
+                new CreateResourceTask("resource1"));
         WorkflowQueue<Task> workflowQueue = Workflow.newWorkflowQueue(100);
 
         State() {
@@ -57,27 +61,11 @@ public class OrderProcessingWorkflowImpl implements OrderProcessingWorkflow {
         }
 
         public boolean allTaskCompleted() {
-            return taskList.stream().allMatch(t -> t.status == Task.Status.COMPLETED);
+            return taskList.stream().allMatch(t -> t.getStatus() == Task.Status.COMPLETED);
         }
     }
 
-    @Data
-    @AllArgsConstructor
-    static class Task {
-        private Task.Type type;
-        private Task.Status status;
 
-        enum Status {
-            PENDING,
-            RUNNING,
-            COMPLETED
-        }
-
-        enum Type {
-            CREATE_PRODUCT,
-            CREATE_RESOURCE,
-            CREATE_SERVICE
-        }
-    }
 
 }
+
