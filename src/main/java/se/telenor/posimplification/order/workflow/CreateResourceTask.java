@@ -6,7 +6,7 @@ import lombok.Getter;
 public class CreateResourceTask extends Task {
     private String resourceId;
     public CreateResourceTask(String resourceId) {
-        super(Type.CREATE_RESOURCE, Status.PENDING);
+        super(Type.CREATE_RESOURCE);
         this.resourceId = resourceId;
     }
 }

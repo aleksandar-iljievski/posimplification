@@ -1,13 +1,19 @@
 package se.telenor.posimplification.order.workflow;
 
-import lombok.AllArgsConstructor;
+import io.temporal.workflow.Workflow;
 import lombok.Data;
 
 @Data
-@AllArgsConstructor
 public abstract class Task {
     private Type type;
-    private Status status;
+    private Status status = Status.PENDING;
+    private String id = Workflow.randomUUID().toString();
+
+    Task(Type type){
+        this.type = type;
+    }
+
+
 
     enum Status {
         PENDING,
