@@ -5,14 +5,12 @@ import io.temporal.common.RetryOptions;
 import io.temporal.failure.ActivityFailure;
 import io.temporal.failure.CanceledFailure;
 import io.temporal.spring.boot.WorkflowImpl;
-import io.temporal.workflow.CancellationScope;
-import io.temporal.workflow.Saga;
-import io.temporal.workflow.Workflow;
-import io.temporal.workflow.WorkflowQueue;
+import io.temporal.workflow.*;
 import se.telenor.posimplification.order.activities.CreateProductActivity;
 import se.telenor.posimplification.order.activities.CreateServiceActivity;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 import static se.telenor.posimplification.temporal.TemporalQueues.ORDER_QUEUE;
@@ -33,15 +31,17 @@ public class OrderProcessingWorkflowImpl implements OrderProcessingWorkflow {
 
     CancellationScope cancellationScope;
 
+    List<Promise<Void>> stepExecutions = new ArrayList<>();
+
     @Override
     public void processOrder() {
 
         cancellationScope = Workflow.newCancellationScope(() -> {
-                while (!state.allTaskCompleted()) {
-                    var task = state.getReadyTasks().poll(Duration.ofDays(30));
-
-                    task.setStatus(Step.Status.RUNNING);
-
+            while (!state.allTaskStarted()) {
+                var task = state.getReadyTasks().poll(Duration.ofDays(30));
+                task.setStatus(Step.Status.RUNNING);
+                var procedureAsync = Async.procedure(() ->
+                {
                     switch (task.getType()) {
                         case CREATE_PRODUCT -> {
                             System.out.println("Creating product");
@@ -60,10 +60,14 @@ public class OrderProcessingWorkflowImpl implements OrderProcessingWorkflow {
                         case CREATE_SERVICE -> {
                             System.out.println("Creating service");
                             createServiceActivity.createService(((CreateServiceStep) task).getServiceId());
+                            task.setStatus(Step.Status.COMPLETED);
                         }
                     }
-                }
+                });
+                stepExecutions.add(procedureAsync);
 
+            }
+            Promise.allOf(stepExecutions).get();
         });
 
         try {
@@ -92,8 +96,8 @@ public class OrderProcessingWorkflowImpl implements OrderProcessingWorkflow {
             return workflowQueue;
         }
 
-        public boolean allTaskCompleted() {
-            return stepList.stream().allMatch(t -> t.getStatus() == Step.Status.COMPLETED);
+        public boolean allTaskStarted() {
+            return stepList.stream().allMatch(t -> t.getStatus() != Step.Status.PENDING);
         }
 
         public void setTaskCompleted(String taskId) {
@@ -124,7 +128,7 @@ public class OrderProcessingWorkflowImpl implements OrderProcessingWorkflow {
 
     @Override
     public CancellationResult cancelOrderProcessing() {
-        if (state.isCancellable()){
+        if (state.isCancellable()) {
             cancellationScope.cancel();
             state.cancel();
             return CancellationResult.builder().cancelled(true).build();
