@@ -7,4 +7,6 @@ import io.temporal.activity.ActivityMethod;
 public interface CreateProductActivity {
 
     void createProduct(String productId);
+
+    void terminateProductCreation(String productId);
 }

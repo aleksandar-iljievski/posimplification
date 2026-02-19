@@ -16,4 +16,8 @@ public class CreateProductActivityImpl implements CreateProductActivity {
         System.out.println("Calling external api to create product: " + productId);
         Thread.sleep(500);
     }
+
+    public void terminateProductCreation(String productId) {
+        System.out.println("Terminating product creation for product: " + productId);
+    }
 }
