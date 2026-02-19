@@ -14,7 +14,7 @@ public interface OrderProcessingWorkflow {
     record ResourceOrderArg(String externalId, String resourceId){}
 
     @QueryMethod
-    OrderProcessingWorkflowImpl.State getState();
+    State getState();
 
     @UpdateMethod
     CancellationResult cancelOrderProcessing();
