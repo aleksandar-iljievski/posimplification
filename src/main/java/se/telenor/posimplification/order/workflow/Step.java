@@ -4,16 +4,14 @@ import io.temporal.workflow.Workflow;
 import lombok.Data;
 
 @Data
-public abstract class Task {
+public abstract class Step {
     private Type type;
     private Status status = Status.PENDING;
     private String id = Workflow.randomUUID().toString();
 
-    Task(Type type){
+    Step(Type type){
         this.type = type;
     }
-
-
 
     enum Status {
         PENDING,

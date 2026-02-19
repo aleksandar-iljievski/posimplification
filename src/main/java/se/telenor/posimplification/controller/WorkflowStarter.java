@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import se.telenor.posimplification.order.workflow.CancellationResult;
 import se.telenor.posimplification.order.workflow.OrderProcessingWorkflow;
 import se.telenor.posimplification.temporal.TemporalQueues;
 
@@ -33,5 +34,15 @@ public class WorkflowStarter {
 
         orderProcessingWorkflow.signalResourceOrderCompleted(new OrderProcessingWorkflow.ResourceOrderArg(taskId, "1"));
 
+    }
+
+    @GetMapping("/cancelOrder")
+    public CancellationResult cancelOrder(){
+        var orderProcessingWorkflow =
+                workflowClient.newWorkflowStub(OrderProcessingWorkflow.class, "workflow1");
+
+        var cancelResult = orderProcessingWorkflow.cancelOrderProcessing();
+        System.out.println("Cancel result: " + cancelResult);
+        return cancelResult;
     }
 }

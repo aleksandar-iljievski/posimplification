@@ -3,9 +3,9 @@ package se.telenor.posimplification.order.workflow;
 import lombok.Getter;
 
 @Getter
-public class CreateServiceTask extends Task {
+public class CreateServiceStep extends Step {
     private String serviceId;
-    public CreateServiceTask(String resourceId) {
+    public CreateServiceStep(String resourceId) {
         super(Type.CREATE_SERVICE);
         this.serviceId = resourceId;
     }
