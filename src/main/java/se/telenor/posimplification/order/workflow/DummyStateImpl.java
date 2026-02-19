@@ -6,30 +6,35 @@ import io.temporal.workflow.WorkflowQueue;
 import java.util.List;
 
 public class DummyStateImpl implements State {
-    List<Step> stepList = List.of(new CreateProductStep("product1"),
-            new CreateResourceStep("resource1"), new CreateServiceStep("service1"));
+    List<Action> actionList ;
 
-    WorkflowQueue<Step> workflowQueue = Workflow.newWorkflowQueue(100);
 
     boolean isCancelled = false;
 
     DummyStateImpl() {
-        stepList.forEach(step -> {
-            workflowQueue.offer(step);
-        });
+        var deleteProduct = new CreateResourceAction("resource1");
+        var createProduct = new CreateProductAction("product1");
+        createProduct.getDependencies().add(deleteProduct);
+        actionList =List.of(deleteProduct, createProduct, new CreateServiceAction("service1"));
     }
 
-    public WorkflowQueue<Step> getReadyTasks() {
+    public WorkflowQueue<Action> getReadyTasks() {
+        WorkflowQueue<Action> workflowQueue = Workflow.newWorkflowQueue(100);
+        actionList.forEach(action -> {
+            if (action.isReady()) {
+                workflowQueue.offer(action);
+            }
+        });
         return workflowQueue;
     }
 
     public boolean allTaskStarted() {
-        return stepList.stream().allMatch(t -> t.getStatus() != Step.Status.PENDING);
+        return actionList.stream().allMatch(t -> t.getStatus() != Action.Status.PENDING);
     }
 
     public void setTaskCompleted(String taskId) {
-        stepList.stream().filter(step -> step.getId().equalsIgnoreCase(taskId))
-                .findFirst().ifPresent(t -> t.setStatus(Step.Status.COMPLETED));
+        actionList.stream().filter(step -> step.getId().equalsIgnoreCase(taskId))
+                .findFirst().ifPresent(t -> t.setStatus(Action.Status.COMPLETED));
 
     }
 

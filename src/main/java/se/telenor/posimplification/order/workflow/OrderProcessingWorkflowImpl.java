@@ -39,28 +39,28 @@ public class OrderProcessingWorkflowImpl implements OrderProcessingWorkflow {
         cancellationScope = Workflow.newCancellationScope(() -> {
             while (!state.allTaskStarted()) {
                 var task = state.getReadyTasks().poll(Duration.ofDays(30));
-                task.setStatus(Step.Status.RUNNING);
+                task.setStatus(Action.Status.RUNNING);
                 var procedureAsync = Async.procedure(() ->
                 {
                     switch (task.getType()) {
                         case CREATE_PRODUCT -> {
                             System.out.println("Creating product");
-                            var productId = ((CreateProductStep) task).getProductId();
+                            var productId = ((CreateProductAction) task).getProductId();
                             saga.addCompensation(createProductActivity::terminateProductCreation, productId);
 
                             createProductActivity.createProduct(productId);
-                            task.setStatus(Step.Status.COMPLETED);
+                            task.setStatus(Action.Status.COMPLETED);
                         }
                         case CREATE_RESOURCE -> {
                             System.out.println("Creating resource");
                             saga.addCompensation(() -> System.out.println("we are doing compensation stuff on resource"));
-                            Workflow.await(() -> task.getStatus().equals(Step.Status.COMPLETED));
+                            Workflow.await(() -> task.getStatus().equals(Action.Status.COMPLETED));
 
                         }
                         case CREATE_SERVICE -> {
                             System.out.println("Creating service");
-                            createServiceActivity.createService(((CreateServiceStep) task).getServiceId());
-                            task.setStatus(Step.Status.COMPLETED);
+                            createServiceActivity.createService(((CreateServiceAction) task).getServiceId());
+                            task.setStatus(Action.Status.COMPLETED);
                         }
                     }
                 });
