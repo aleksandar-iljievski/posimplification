@@ -8,6 +8,7 @@ import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.*;
 import se.telenor.posimplification.order.activities.CreateProductActivity;
 import se.telenor.posimplification.order.activities.CreateServiceActivity;
+import se.telenor.posimplification.order.activities.DeleteProductActivity;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -21,6 +22,9 @@ public class OrderProcessingWorkflowImpl implements OrderProcessingWorkflow {
     Saga saga = new Saga(new Saga.Options.Builder().setParallelCompensation(true).build());
 
     CreateProductActivity createProductActivity = Workflow.newActivityStub(CreateProductActivity.class,
+            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofMinutes(1)).build());
+
+    DeleteProductActivity deleteProductActivity = Workflow.newActivityStub(DeleteProductActivity.class,
             ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofMinutes(1)).build());
 
     CreateServiceActivity createServiceActivity = Workflow.newActivityStub(CreateServiceActivity.class,
@@ -37,8 +41,9 @@ public class OrderProcessingWorkflowImpl implements OrderProcessingWorkflow {
     public void processOrder() {
 
         cancellationScope = Workflow.newCancellationScope(() -> {
+            var taskQueue = state.getReadyTasks();
             while (!state.allTaskStarted()) {
-                var task = state.getReadyTasks().poll(Duration.ofDays(30));
+                var task = taskQueue.poll(Duration.ofDays(30));
                 task.setStatus(Action.Status.RUNNING);
                 var procedureAsync = Async.procedure(() ->
                 {
@@ -47,20 +52,25 @@ public class OrderProcessingWorkflowImpl implements OrderProcessingWorkflow {
                             System.out.println("Creating product");
                             var productId = ((CreateProductAction) task).getProductId();
                             saga.addCompensation(createProductActivity::terminateProductCreation, productId);
-
                             createProductActivity.createProduct(productId);
-                            task.setStatus(Action.Status.COMPLETED);
+                            state.setTaskCompleted(task.getId());
+                        }
+                        case DELETE_PRODUCT -> {
+                            System.out.println("Deleting product");
+                            var productId = ((DeleteProductAction) task).getProductId();
+                            deleteProductActivity.deleteProduct(productId);
+                            saga.addCompensation(() -> System.out.println("we restore the deleted product"));
+                            state.setTaskCompleted(task.getId());
                         }
                         case CREATE_RESOURCE -> {
                             System.out.println("Creating resource");
                             saga.addCompensation(() -> System.out.println("we are doing compensation stuff on resource"));
                             Workflow.await(() -> task.getStatus().equals(Action.Status.COMPLETED));
-
                         }
                         case CREATE_SERVICE -> {
                             System.out.println("Creating service");
                             createServiceActivity.createService(((CreateServiceAction) task).getServiceId());
-                            task.setStatus(Action.Status.COMPLETED);
+                            state.setTaskCompleted(task.getId());
                         }
                     }
                 });

@@ -14,7 +14,8 @@ public class CreateProductActivityImpl implements CreateProductActivity {
     @SneakyThrows
     public void createProduct(String productId) {
         System.out.println("Calling external api to create product: " + productId);
-        Thread.sleep(500);
+        Thread.sleep(2000);
+        System.out.println("Product creation done: " + productId);
     }
 
     public void terminateProductCreation(String productId) {
