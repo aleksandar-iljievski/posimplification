@@ -7,10 +7,13 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class DummyStateImpl implements State {
+
+
     List<Action> actionList;
     WorkflowQueue<Action> readyQueue = Workflow.newWorkflowQueue(100);
 
     boolean isCancelled = false;
+    boolean waitForExtranalApprouval = false;
 
     DummyStateImpl() {
         var deleteProduct = new DeleteProductAction("product0");

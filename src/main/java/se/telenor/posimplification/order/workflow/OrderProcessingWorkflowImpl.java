@@ -6,13 +6,14 @@ import io.temporal.failure.ActivityFailure;
 import io.temporal.failure.CanceledFailure;
 import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.*;
-import se.telenor.posimplification.order.activities.CreateProductActivity;
-import se.telenor.posimplification.order.activities.CreateServiceActivity;
-import se.telenor.posimplification.order.activities.DeleteProductActivity;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import se.telenor.posimplification.order.activities.CreateProductActivity;
+import se.telenor.posimplification.order.activities.CreateServiceActivity;
+import se.telenor.posimplification.order.activities.DeleteProductActivity;
+import se.telenor.posimplification.product.CreateProductResult;
+import se.telenor.posimplification.product.CreateProductWorkflow;
 
 import static se.telenor.posimplification.temporal.TemporalQueues.ORDER_QUEUE;
 
@@ -23,6 +24,9 @@ public class OrderProcessingWorkflowImpl implements OrderProcessingWorkflow {
 
     CreateProductActivity createProductActivity = Workflow.newActivityStub(CreateProductActivity.class,
             ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofMinutes(1)).build());
+
+    CreateProductWorkflow createProductWorkflow = Workflow.newChildWorkflowStub(CreateProductWorkflow.class,
+            ChildWorkflowOptions.newBuilder().setTaskQueue(ORDER_QUEUE).build());
 
     DeleteProductActivity deleteProductActivity = Workflow.newActivityStub(DeleteProductActivity.class,
             ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofMinutes(1)).build());
@@ -52,9 +56,17 @@ public class OrderProcessingWorkflowImpl implements OrderProcessingWorkflow {
                             System.out.println("Creating product");
                             var productId = ((CreateProductAction) task).getProductId();
                             saga.addCompensation(createProductActivity::terminateProductCreation, productId);
-                            createProductActivity.createProduct(productId);
-                            state.setTaskCompleted(task.getId());
+
+                            CreateProductResult result = createProductWorkflow.createProduct(productId);
+                            if (!result.success()) {
+                                System.out.println("Child workflow failed: " + result.errorMessage() + ", doing parent compensation");
+                                saga.compensate();
+                            } else {
+                                state.setTaskCompleted(task.getId());
+                            }
                         }
+
+
                         case DELETE_PRODUCT -> {
                             System.out.println("Deleting product");
                             var productId = ((DeleteProductAction) task).getProductId();

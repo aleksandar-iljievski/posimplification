@@ -14,35 +14,50 @@ import se.telenor.posimplification.temporal.TemporalQueues;
 @RestController
 public class WorkflowStarter {
 
-    private final WorkflowClient workflowClient;
+  private final WorkflowClient workflowClient;
 
-    @GetMapping("/start-workflow")
-    public void startWorkflow(){
-        var orderProcessingWorkflow = workflowClient.newWorkflowStub(OrderProcessingWorkflow.class,
-                WorkflowOptions.newBuilder()
-                        .setWorkflowId("workflow1")
-                        .setTaskQueue(TemporalQueues.ORDER_QUEUE).build());
+  @GetMapping("/start-workflow")
+  public void startWorkflow() {
+    var orderProcessingWorkflow =
+        workflowClient.newWorkflowStub(
+            OrderProcessingWorkflow.class,
+            WorkflowOptions.newBuilder()
+                .setWorkflowId("workflow1")
+                .setTaskQueue(TemporalQueues.ORDER_QUEUE)
+                .build());
 
-        WorkflowClient.start(orderProcessingWorkflow::processOrder);
+    WorkflowClient.start(orderProcessingWorkflow::processOrder);
+  }
 
-    }
+  @GetMapping("/start-workflow-error")
+  public void startWorkflowError() {
+    var orderProcessingWorkflow =
+        workflowClient.newWorkflowStub(
+            OrderProcessingWorkflow.class,
+            WorkflowOptions.newBuilder()
+                .setWorkflowId("error")
+                .setTaskQueue(TemporalQueues.ORDER_QUEUE)
+                .build());
 
-    @GetMapping("/fake-rabbit/{taskId}")
-    public void continueProcessing(@PathVariable String taskId){
-        var orderProcessingWorkflow =
-                workflowClient.newWorkflowStub(OrderProcessingWorkflow.class, "workflow1");
+    WorkflowClient.start(orderProcessingWorkflow::processOrder);
+  }
 
-        orderProcessingWorkflow.signalResourceOrderCompleted(new OrderProcessingWorkflow.ResourceOrderArg(taskId, "1"));
+  @GetMapping("/fake-rabbit/{taskId}")
+  public void continueProcessing(@PathVariable String taskId) {
+    var orderProcessingWorkflow =
+        workflowClient.newWorkflowStub(OrderProcessingWorkflow.class, "workflow1");
 
-    }
+    orderProcessingWorkflow.signalResourceOrderCompleted(
+        new OrderProcessingWorkflow.ResourceOrderArg(taskId, "1"));
+  }
 
-    @GetMapping("/cancelOrder")
-    public CancellationResult cancelOrder(){
-        var orderProcessingWorkflow =
-                workflowClient.newWorkflowStub(OrderProcessingWorkflow.class, "workflow1");
+  @GetMapping("/cancelOrder")
+  public CancellationResult cancelOrder() {
+    var orderProcessingWorkflow =
+        workflowClient.newWorkflowStub(OrderProcessingWorkflow.class, "workflow1");
 
-        var cancelResult = orderProcessingWorkflow.cancelOrderProcessing();
-        System.out.println("Cancel result: " + cancelResult);
-        return cancelResult;
-    }
+    var cancelResult = orderProcessingWorkflow.cancelOrderProcessing();
+    System.out.println("Cancel result: " + cancelResult);
+    return cancelResult;
+  }
 }
